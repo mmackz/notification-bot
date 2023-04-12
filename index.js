@@ -1,14 +1,51 @@
-const { Client, Events, GatewayIntentBits } = require("discord.js");
 require("dotenv").config();
+const Web3 = require("web3");
+const contractAbi = require("./lib/utils/abi");
 
-// Create a new client instance
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const discord = require("./lib/discord");
 
-// When the client is ready, run this code (only once)
-// We use 'c' for the event parameter to keep it separate from the already defined 'client'
-client.once(Events.ClientReady, (c) => {
-   console.log(`Ready! Logged in as ${c.user.tag}`);
-});
+const ethWeb3 = new Web3(
+   new Web3.providers.WebsocketProvider(
+      `wss://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`
+   )
+);
 
-// Log in to Discord with your client's token
-client.login(process.env.DISCORD_TOKEN);
+const polygonWeb3 = new Web3(
+   new Web3.providers.WebsocketProvider(
+      `wss://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`
+   )
+);
+
+const optimismWeb3 = new Web3(
+   new Web3.providers.WebsocketProvider(
+      `wss://opt-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`
+   )
+);
+
+// Address for Quest Factory contract
+const contractAddress = "0x52629961f71c1c2564c5aa22372cb1b9fa9eba3e";
+const contract = new optimismWeb3.eth.Contract(contractAbi, contractAddress);
+
+contract.events.QuestCreated(
+   {
+      fromBlock: "latest"
+   },
+   async (error, event) => {
+      if (error) {
+         console.error("Error:", error);
+      } else {
+         const {
+            questId,
+            rewardTokenAddress,
+            startTime,
+            endTime,
+            totalParticipants,
+            rewardAmountOrTokenId
+         } = event.returnValues;
+         const message = "New quest started: " + JSON.stringify(questId);
+
+         // Send the message to the Discord channel
+         await discord.sendMessage(message);
+      }
+   }
+);
