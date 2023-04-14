@@ -42,7 +42,8 @@ contract.events.QuestCreated(
             totalParticipants,
             rewardAmountOrTokenId
          } = event.returnValues;
-         const message = "New quest started: " + JSON.stringify(questId);
+         console.log(event.returnValues);
+         const message = "New quest started: " + JSON.stringify(event.returnValues);
 
          // Send the message to the Discord channel
          await discord.sendMessage(message);
