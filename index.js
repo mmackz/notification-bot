@@ -1,6 +1,14 @@
-const { Client, EmbedBuilder, Events, GatewayIntentBits } = require("discord.js");
-const subscribeEvents = require("./lib/events");
+const {
+   Client,
+   EmbedBuilder,
+   Events,
+   GatewayIntentBits,
+   ActionRowBuilder,
+   ButtonBuilder,
+   ButtonStyle
+} = require("discord.js");
 require("dotenv").config();
+const subscribeEvents = require("./lib/events");
 
 const client = new Client({
    intents: [
@@ -10,38 +18,64 @@ const client = new Client({
    ]
 });
 
+// Name for notification role
+const roleName = "Quester";
+
 client.once(Events.ClientReady, async (c) => {
+   // log in and start listening for QuestCreated Events
    console.log(`Ready! Logged in as ${c.user.tag}`);
    subscribeEvents(sendMessage);
 });
 
-client.on(Events.MessageCreate, async (message) => {
-   if (message.author.bot) return;
+client.on(Events.GuildCreate, async () => {
+   // Create Notification setup message when bot is installed
+   const embed = new EmbedBuilder()
+      .setColor(0x9000a2)
+      .setTitle("Quest Notifications")
+      .setDescription("Click the bell emoji below to turn on/off quest notifications.");
 
-   const commandChannelId = process.env.COMMAND_CHANNEL_ID;
+   const channel = await client.channels.fetch(process.env.SETUP_CHANNEL_ID);
 
-   if (
-      message.channel.id === commandChannelId &&
-      message.content === "!enable-notifications"
-   ) {
-      try {
-         const roleName = "Quester";
-         const role = message.guild.roles.cache.find((r) => r.name === roleName);
+   try {
+      // check if channel is empty before creating message
+      const messages = await channel.messages.fetch({ limit: 1 });
+      const isEmpty = messages.size === 0;
 
-         if (!role) {
-            console.error(`Role "${roleName}" not found in the server.`);
-            return;
-         }
+      if (isEmpty) {
+         await channel.send({
+            embeds: [embed],
+            components: [
+               new ActionRowBuilder().setComponents(
+                  new ButtonBuilder()
+                     .setCustomId("notifications")
+                     .setLabel("Press Here 🔔")
+                     .setStyle(ButtonStyle.Primary)
+               )
+            ]
+         });
+      }
+   } catch (error) {
+      console.error("Error setting up the server:", error);
+   }
+});
 
-         await message.member.roles.add(role);
-         await message.channel.send(
-            "You have been granted the role to receive notifications!"
-         );
-      } catch (error) {
-         console.error("An error occurred while granting the role:", error);
-         await message.channel.send(
-            "An error occurred while granting the role. Please contact an administrator."
-         );
+client.on("interactionCreate", async (interaction) => {
+   if (interaction.isButton() && interaction.customId === "notifications") {
+      const { guild, member } = interaction;
+      const role = guild.roles.cache.find((r) => r.name === roleName);
+      const hasRole = member.roles.cache.has(role.id);
+      if (hasRole) {
+         await member.roles.remove(role);
+         interaction.reply({
+            content: `We have removed the <@&${process.env.ROLE_ID}> role. You will no longer receive quest notifications. Press the button again if you want to re-enable notifications.`,
+            ephemeral: true
+         });
+      } else {
+         await member.roles.add(role);
+         interaction.reply({
+            content: `You have been assigned the <@&${process.env.ROLE_ID}> role. This will allow you to receive quest notifications in the <#${process.env.CHANNEL_ID}> channel. Press the button again if you would like to turn off notifications.`,
+            ephemeral: true
+         });
       }
    }
 });
@@ -54,7 +88,7 @@ function createEmbed(data) {
       .setURL(`https://rabbithole.gg/quests?quest=${questId}`)
       .setAuthor({
          name: "Rabbithole",
-         iconURL: "https://cryptocurrencyjobs.co/startups/assets/logos/rabbithole.png",
+         iconURL: "https://i.imgur.com/WxFBgaR.png",
          url: "https://rabbithole.gg"
       })
       .setDescription(`<@&${process.env.ROLE_ID}>`)
