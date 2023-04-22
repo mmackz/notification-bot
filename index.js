@@ -10,6 +10,8 @@ const {
 require("dotenv").config();
 const subscribeEvents = require("./lib/events");
 const convertSvg = require("./lib/convertSvg");
+const json = require("./lib/json");
+const svgToPng = require("./lib/convertSvg");
 
 const client = new Client({
    intents: [
@@ -74,20 +76,38 @@ client.on("interactionCreate", async (interaction) => {
       } else {
          await member.roles.add(role);
          interaction.reply({
-            content: `You have been assigned the <@&${process.env.ROLE_ID}> role. This will allow you to receive quest notifications in the <#${process.env.CHANNEL_ID}> channel. Press the button again if you would like to turn off notifications.`,
+            content: `You have been assigned the <@&${process.env.ROLE_ID}> role. This will allow you to receive quest notifications in the <#${process.env.NOTIFICATION_CHANNEL_ID}> channel. Press the button again if you would like to turn off notifications.`,
             ephemeral: true
          });
       }
    }
 });
 
-function createEmbed(data) {
+async function createEmbed(data) {
    const { questId, name, description, rewards } = data;
    let icon = data.icon;
 
    // convert .svg icons to png
    if (icon.includes(".svg")) {
       icon = `attachment://thumbnail.png`;
+   }
+
+   // check if reward icon exists in json file
+   const emojis = json.read();
+
+   if (!Object.keys(emojis).includes(rewards.token)) {
+      // create new emoji and save id to json file
+      const emojiGuild = client.guilds.cache.get(process.env.EMOJI_GUILD_ID);
+      const createdEmoji = await emojiGuild.emojis.create({
+         attachment: !rewards.icon.endsWith(".svg")
+            ? rewards.icon
+            : await svgToPng(rewards.icon),
+         name: rewards.token
+      });
+      json.write({ [rewards.token]: createdEmoji.id, ...emojis });
+      rewardIcon = `<:${rewards.token}:${createdEmoji.id}>`;
+   } else {
+      rewardIcon = `<:${rewards.token}:${emojis[rewards.token]}>`;
    }
 
    return new EmbedBuilder()
@@ -104,7 +124,7 @@ function createEmbed(data) {
          { name: "Quest Name", value: name, inline: true },
          {
             name: "Reward",
-            value: `${rewards.amount} <:OP:1097255896603697262>`,
+            value: `${rewards.amount} ${rewardIcon}`,
             inline: true
          },
          { name: "Description", value: description, inline: false }
@@ -120,14 +140,16 @@ async function sendMessage(questId) {
          `https://api.rabbithole.gg/v1.1/quest/${address}/${questId}`
       );
       const questData = await response.json();
-      const { iconOption: icon, name, description } = questData;
+      const { iconOption: icon, name, description, rewards: rewardData } = questData;
 
       const rewards = {
-         token: questData.rewards[0].tokenSymbol,
-         amount: questData.rewards[0].amount / 10 ** 18
+         token: rewardData[0].tokenSymbol,
+         amount: rewardData[0].amount / 10 ** 18,
+         icon: rewardData[0].s3Link
       };
-      const embed = createEmbed({ questId, icon, name, description, rewards });
-      const channel = await client.channels.fetch(process.env.CHANNEL_ID);
+
+      const embed = await createEmbed({ questId, icon, name, description, rewards });
+      const channel = await client.channels.fetch(process.env.NOTIFICATION_CHANNEL_ID);
       const files = [];
 
       if (icon.endsWith(".svg")) {
@@ -137,8 +159,12 @@ async function sendMessage(questId) {
          }
       }
 
-      const roleMention = `<@&${process.env.ROLE_ID}>`;
-      await channel.send({ content: `A New Quest Has Appeared! ${roleMention}`, embeds: [embed], files });
+      const roleMention = "**TEST, NOT REAL!!**" || `<@&${process.env.ROLE_ID}>`;
+      await channel.send({
+         content: `A New Quest Has Appeared! ${roleMention}`,
+         embeds: [embed],
+         files
+      });
    } catch (e) {
       console.error(e);
    }
