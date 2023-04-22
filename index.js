@@ -9,6 +9,7 @@ const {
 } = require("discord.js");
 require("dotenv").config();
 const subscribeEvents = require("./lib/events");
+const convertSvg = require("./lib/convertSvg");
 
 const client = new Client({
    intents: [
@@ -81,7 +82,14 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 function createEmbed(data) {
-   const { questId, icon, name, description, rewards } = data;
+   const { questId, name, description, rewards } = data;
+   let icon = data.icon;
+
+   // convert .svg icons to png
+   if (icon.includes(".svg")) {
+      icon = `attachment://thumbnail.png`;
+   }
+
    return new EmbedBuilder()
       .setColor(0x9000a2)
       .setTitle("A New Quest Has Started")
@@ -91,7 +99,6 @@ function createEmbed(data) {
          iconURL: "https://i.imgur.com/WxFBgaR.png",
          url: "https://rabbithole.gg"
       })
-      .setDescription(`<@&${process.env.ROLE_ID}>`)
       .setThumbnail(icon)
       .addFields(
          { name: "Quest Name", value: name, inline: true },
@@ -114,14 +121,24 @@ async function sendMessage(questId) {
       );
       const questData = await response.json();
       const { iconOption: icon, name, description } = questData;
+
       const rewards = {
          token: questData.rewards[0].tokenSymbol,
          amount: questData.rewards[0].amount / 10 ** 18
       };
       const embed = createEmbed({ questId, icon, name, description, rewards });
       const channel = await client.channels.fetch(process.env.CHANNEL_ID);
+      const files = [];
+
+      if (icon.endsWith(".svg")) {
+         const png = await convertSvg(icon);
+         if (png) {
+            files.push({ attachment: png, name: "thumbnail.png" });
+         }
+      }
+
       const roleMention = `<@&${process.env.ROLE_ID}>`;
-      await channel.send({ content: `${roleMention}`, embeds: [embed] });
+      await channel.send({ content: `A New Quest Has Appeared! ${roleMention}`, embeds: [embed], files });
    } catch (e) {
       console.error(e);
    }
