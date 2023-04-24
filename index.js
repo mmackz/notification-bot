@@ -1,7 +1,7 @@
 const { Events } = require("discord.js");
-require("dotenv").config();
 const subscribeEvents = require("./lib/events");
 const discord = require("./lib/discord");
+require("dotenv").config();
 
 const { client } = discord;
 
