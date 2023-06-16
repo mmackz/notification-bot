@@ -1,6 +1,6 @@
 {
   "name": "notification-bot",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A Discord Bot to notify users when a new quest becomes available.",
   "main": "index.js",
   "scripts": {
@@ -15,6 +15,7 @@
     "discord.js": "^14.9.0",
     "dotenv": "^16.0.3",
     "graphql-request": "^6.0.0",
+    "node-cache": "^5.1.2",
     "sharp": "^0.32.0",
     "web3": "^1.9.0"
   }
