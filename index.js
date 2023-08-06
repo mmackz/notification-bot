@@ -1,5 +1,6 @@
 const { Events } = require("discord.js");
 const subscribeEvents = require("./lib/events");
+const subscribeMirrorPosts = require("./lib/mirror");
 const discord = require("./lib/discord");
 require("dotenv").config();
 
@@ -8,7 +9,12 @@ const { client } = discord;
 // log in and start listening for QuestCreated Events
 client.once(Events.ClientReady, async (c) => {
    console.log(`Ready! Logged in as ${c.user.tag}`);
-   subscribeEvents(discord.sendMessage);
+
+   // subscribe to QuestCreated Events
+   subscribeEvents(discord.sendNotification);
+
+   // subscribe to Mirror Rabbithole Mirror Posts
+   subscribeMirrorPosts(discord.notifyMirrorPost);
 });
 
 // setup channels/roles when installed to new server
@@ -23,4 +29,5 @@ client.on("interactionCreate", async (interaction) => {
    }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+// Use process.env.DISCORD_TOKEN for production
+client.login(process.env.DISCORD_TOKEN_DEV);
