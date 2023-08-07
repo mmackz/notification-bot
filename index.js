@@ -2,6 +2,7 @@ const { Events } = require("discord.js");
 const subscribeEvents = require("./lib/events");
 const subscribeMirrorPosts = require("./lib/mirror");
 const discord = require("./lib/discord");
+const twitter = require("./lib/twitter");
 require("dotenv").config();
 
 const { client } = discord;
@@ -11,7 +12,7 @@ client.once(Events.ClientReady, async (c) => {
    console.log(`Ready! Logged in as ${c.user.tag}`);
 
    // subscribe to QuestCreated Events
-   subscribeEvents(discord.sendNotification);
+   subscribeEvents(discord.sendNotification, twitter.sendTweet);
 
    // subscribe to Mirror Rabbithole Mirror Posts
    subscribeMirrorPosts(discord.notifyMirrorPost);
