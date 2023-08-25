@@ -3,13 +3,14 @@ const subscribeEvents = require("./lib/events");
 const subscribeMirrorPosts = require("./lib/mirror");
 const discord = require("./lib/discord");
 const twitter = require("./lib/twitter");
+const logger = require("./lib/utils/logging");
 require("dotenv").config();
 
 const { client } = discord;
 
 // log in and start listening for QuestCreated Events
 client.once(Events.ClientReady, async (c) => {
-   console.log(`Ready! Logged in as ${c.user.tag}`);
+   logger.info(`Ready! Logged in as ${c.user.tag}`);
 
    // subscribe to QuestCreated Events
    subscribeEvents(discord.sendNotification, twitter.sendTweet);
