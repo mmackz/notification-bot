@@ -2,3 +2,4 @@
 .env
 test.js
 /lib/utils/testabi.js
+.vscode/
